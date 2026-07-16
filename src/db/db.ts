@@ -69,7 +69,12 @@ export async function ensureSeeded(): Promise<void> {
 
 // IDs von Standardkategorien, die nach dem ersten Release ergänzt wurden.
 // Werden bei bestehenden Installationen einmalig nachgezogen (nur falls fehlend).
-const LATER_ADDED_CATEGORY_IDS = ['cat-gluecksspiel', 'cat-umbuchung']
+const LATER_ADDED_CATEGORY_IDS = [
+  'cat-gluecksspiel',
+  'cat-umbuchung',
+  'cat-erstattung',
+  'cat-private-einnahme',
+]
 
 /**
  * Sanfte Migrationen für bestehende Installationen.
@@ -103,6 +108,12 @@ async function runMigrations(): Promise<void> {
       categoryId: 'cat-gluecksspiel',
       createdAt: new Date().toISOString(),
     })
+  }
+
+  // Standardname „Einkommen" → „Gehalt & Lohn" (nur falls unverändert).
+  const einkommen = await db.categories.get('cat-einkommen')
+  if (einkommen && einkommen.name === 'Einkommen') {
+    await db.categories.update('cat-einkommen', { name: 'Gehalt & Lohn' })
   }
 }
 

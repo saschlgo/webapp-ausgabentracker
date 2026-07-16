@@ -17,8 +17,10 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-reisen', name: 'Reisen', emoji: '✈️', color: '#06b6d4', kind: 'expense', isDefault: true, order: 9 },
   { id: 'cat-bildung', name: 'Bildung', emoji: '📚', color: '#6366f1', kind: 'expense', isDefault: true, order: 10 },
   { id: 'cat-versicherung', name: 'Versicherung & Finanzen', emoji: '🛡️', color: '#64748b', kind: 'expense', isDefault: true, order: 11 },
-  { id: 'cat-einkommen', name: 'Einkommen', emoji: '💰', color: '#16a34a', kind: 'income', isDefault: true, order: 12 },
-  { id: 'cat-umbuchung', name: 'Umbuchung / Intern', emoji: '🔄', color: '#78716c', kind: 'both', isDefault: true, order: 13, excludeFromStats: true },
+  { id: 'cat-einkommen', name: 'Gehalt & Lohn', emoji: '💰', color: '#16a34a', kind: 'income', isDefault: true, order: 12 },
+  { id: 'cat-erstattung', name: 'Erstattung & Cashback', emoji: '💸', color: '#10b981', kind: 'income', isDefault: true, order: 13 },
+  { id: 'cat-private-einnahme', name: 'Private Einnahme', emoji: '🤝', color: '#84cc16', kind: 'income', isDefault: true, order: 14 },
+  { id: 'cat-umbuchung', name: 'Umbuchung / Intern', emoji: '🔄', color: '#78716c', kind: 'both', isDefault: true, order: 15, excludeFromStats: true },
   { id: 'cat-sonstiges', name: 'Sonstiges', emoji: '❓', color: '#94a3b8', kind: 'both', isDefault: true, order: 99 },
 ]
 
@@ -102,9 +104,18 @@ const RULE_SEED: { pattern: string; categoryId: string }[] = [
   { pattern: 'sparplan', categoryId: 'cat-versicherung' },
   { pattern: 'darl.-leistung', categoryId: 'cat-versicherung' },
   { pattern: 'kreditkartenabrechnung', categoryId: 'cat-versicherung' },
-  // Einkommen
+  // Einkommen (Gehalt/Lohn)
   { pattern: 'gehalt', categoryId: 'cat-einkommen' },
   { pattern: 'lohn', categoryId: 'cat-einkommen' },
+  // Erstattung & Cashback (Einnahmen, aber kein Gehalt)
+  { pattern: 'erstattung', categoryId: 'cat-erstattung' },
+  { pattern: 'rückerstattung', categoryId: 'cat-erstattung' },
+  { pattern: 'rueckerstattung', categoryId: 'cat-erstattung' },
+  { pattern: 'cashback', categoryId: 'cat-erstattung' },
+  { pattern: 'reisekosten', categoryId: 'cat-erstattung' },
+  { pattern: 'hrworks', categoryId: 'cat-erstattung' },
+  { pattern: 'spesen', categoryId: 'cat-erstattung' },
+  { pattern: 'refund', categoryId: 'cat-erstattung' },
   // Umbuchung / Intern (zählt nicht in die Auswertung)
   { pattern: 'übertrag', categoryId: 'cat-umbuchung' },
   { pattern: 'uebertrag', categoryId: 'cat-umbuchung' },
