@@ -40,17 +40,24 @@ export default function Rules() {
     await db.rules.delete(id)
   }
 
-  // Regeln auf bereits vorhandene, nicht kategorisierte Buchungen anwenden.
-  async function applyToExisting() {
+  // Regeln anwenden. Bei all=false nur auf nicht kategorisierte Buchungen,
+  // bei all=true auf alle (passende Regel überschreibt bestehende Kategorie).
+  async function applyRules(all: boolean) {
     const allRules = await db.rules.toArray()
     if (allRules.length === 0) return
-    const uncategorized = await db.transactions
-      .filter((t) => !t.categoryId)
-      .toArray()
+    if (all) {
+      const ok = confirm(
+        'Regeln auf ALLE Buchungen anwenden? Bereits zugeordnete Buchungen, auf die eine Regel passt, werden dabei überschrieben.',
+      )
+      if (!ok) return
+    }
+    const list = all
+      ? await db.transactions.toArray()
+      : await db.transactions.filter((t) => !t.categoryId).toArray()
     let count = 0
-    for (const t of uncategorized) {
+    for (const t of list) {
       const cat = categorizeByRules(t, allRules)
-      if (cat) {
+      if (cat && cat !== t.categoryId) {
         await db.transactions.update(t.id, { categoryId: cat })
         count++
       }
@@ -144,12 +151,17 @@ export default function Rules() {
             </div>
           </div>
 
-          <button className="btn btn-block" onClick={applyToExisting}>
-            🔄 Auf offene Buchungen anwenden
-          </button>
+          <div className="stack">
+            <button className="btn btn-block" onClick={() => applyRules(false)}>
+              🔄 Auf offene Buchungen anwenden
+            </button>
+            <button className="btn btn-block" onClick={() => applyRules(true)}>
+              ♻️ Auf alle Buchungen anwenden
+            </button>
+          </div>
           {applied !== null && (
             <p className="hint center">
-              {applied} Buchung(en) automatisch zugeordnet.
+              {applied} Buchung(en) neu zugeordnet.
             </p>
           )}
         </>

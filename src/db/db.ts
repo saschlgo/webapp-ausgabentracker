@@ -56,11 +56,53 @@ export async function ensureSeeded(): Promise<void> {
     if (rulesCount === 0) {
       await db.rules.bulkAdd(defaultRules(new Date().toISOString()))
     }
+  } else {
+    // Bestehende Installationen: nachträglich ergänzte Standards migrieren.
+    await runMigrations()
   }
 
   const settings = await db.settings.get('app')
   if (!settings) {
     await db.settings.put({ id: 'app', currency: 'EUR', theme: 'system' })
+  }
+}
+
+// IDs von Standardkategorien, die nach dem ersten Release ergänzt wurden.
+// Werden bei bestehenden Installationen einmalig nachgezogen (nur falls fehlend).
+const LATER_ADDED_CATEGORY_IDS = ['cat-gluecksspiel']
+
+/**
+ * Sanfte Migrationen für bestehende Installationen.
+ * Fügt neue Standardkategorien hinzu (falls nicht vorhanden) und hängt die
+ * ursprüngliche Lotto-Regel von „Freizeit" auf „Glücksspiel" um.
+ */
+async function runMigrations(): Promise<void> {
+  for (const id of LATER_ADDED_CATEGORY_IDS) {
+    const exists = await db.categories.get(id)
+    if (!exists) {
+      const def = DEFAULT_CATEGORIES.find((c) => c.id === id)
+      if (def) await db.categories.add(def)
+    }
+  }
+
+  // Frühere Regel „lotto → Freizeit" auf Glücksspiel umstellen …
+  const freizeitLotto = await db.rules
+    .filter((r) => r.pattern === 'lotto' && r.categoryId === 'cat-freizeit')
+    .toArray()
+  for (const r of freizeitLotto) {
+    await db.rules.update(r.id, { categoryId: 'cat-gluecksspiel' })
+  }
+
+  // … und sicherstellen, dass überhaupt eine Lotto→Glücksspiel-Regel existiert.
+  const anyLotto = await db.rules.filter((r) => r.pattern === 'lotto').count()
+  if (anyLotto === 0) {
+    await db.rules.add({
+      id: newId(),
+      field: 'any',
+      pattern: 'lotto',
+      categoryId: 'cat-gluecksspiel',
+      createdAt: new Date().toISOString(),
+    })
   }
 }
 

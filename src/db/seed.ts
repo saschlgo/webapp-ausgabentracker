@@ -9,7 +9,8 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-wohnen', name: 'Wohnen & Nebenkosten', emoji: '🏠', color: '#3b82f6', kind: 'expense', isDefault: true, order: 2 },
   { id: 'cat-mobilitaet', name: 'Mobilität', emoji: '🚗', color: '#f97316', kind: 'expense', isDefault: true, order: 3 },
   { id: 'cat-freizeit', name: 'Freizeit & Ausgehen', emoji: '🎉', color: '#a855f7', kind: 'expense', isDefault: true, order: 4 },
-  { id: 'cat-gesundheit', name: 'Gesundheit', emoji: '💊', color: '#ef4444', kind: 'expense', isDefault: true, order: 5 },
+  { id: 'cat-gluecksspiel', name: 'Glücksspiel', emoji: '🎰', color: '#d97706', kind: 'expense', isDefault: true, order: 5 },
+  { id: 'cat-gesundheit', name: 'Gesundheit', emoji: '💊', color: '#ef4444', kind: 'expense', isDefault: true, order: 6 },
   { id: 'cat-shopping', name: 'Shopping', emoji: '🛍️', color: '#ec4899', kind: 'expense', isDefault: true, order: 6 },
   { id: 'cat-abos', name: 'Abos & Verträge', emoji: '🔁', color: '#14b8a6', kind: 'expense', isDefault: true, order: 7 },
   { id: 'cat-restaurant', name: 'Restaurant & Café', emoji: '🍽️', color: '#eab308', kind: 'expense', isDefault: true, order: 8 },
@@ -78,10 +79,17 @@ const RULE_SEED: { pattern: string; categoryId: string }[] = [
   { pattern: 'lieferando', categoryId: 'cat-restaurant' },
   { pattern: 'caffe', categoryId: 'cat-restaurant' },
   { pattern: 'too good to go', categoryId: 'cat-restaurant' },
+  // Glücksspiel
+  { pattern: 'lotto', categoryId: 'cat-gluecksspiel' },
+  { pattern: 'tipico', categoryId: 'cat-gluecksspiel' },
+  { pattern: 'oddset', categoryId: 'cat-gluecksspiel' },
+  { pattern: 'bwin', categoryId: 'cat-gluecksspiel' },
+  { pattern: 'casino', categoryId: 'cat-gluecksspiel' },
+  { pattern: 'spielbank', categoryId: 'cat-gluecksspiel' },
+  { pattern: 'eurojackpot', categoryId: 'cat-gluecksspiel' },
   // Freizeit
   { pattern: 'kino', categoryId: 'cat-freizeit' },
   { pattern: 'cinema', categoryId: 'cat-freizeit' },
-  { pattern: 'lotto', categoryId: 'cat-freizeit' },
   { pattern: 'europa park', categoryId: 'cat-freizeit' },
   // Shopping
   { pattern: 'temu', categoryId: 'cat-shopping' },
