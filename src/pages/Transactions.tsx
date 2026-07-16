@@ -9,7 +9,8 @@ import { useCategoryMap } from '../hooks/data'
 import { formatCurrency, formatDate, formatMonthLabel, monthKeyOf } from '../lib/format'
 import type { Transaction } from '../types'
 
-type Filter = 'all' | 'uncategorized' | string // 'all' | 'uncategorized' | categoryId
+// 'all' | 'expense' | 'income' | 'uncategorized' | categoryId
+type Filter = 'all' | 'expense' | 'income' | 'uncategorized' | string
 
 export default function Transactions() {
   const catMap = useCategoryMap()
@@ -26,6 +27,10 @@ export default function Transactions() {
     let list = transactions ?? []
     if (filter === 'uncategorized') {
       list = list.filter((t) => !t.categoryId)
+    } else if (filter === 'expense') {
+      list = list.filter((t) => t.amount < 0)
+    } else if (filter === 'income') {
+      list = list.filter((t) => t.amount > 0)
     } else if (filter !== 'all') {
       list = list.filter((t) => t.categoryId === filter)
     }
@@ -83,6 +88,18 @@ export default function Transactions() {
           Alle
         </button>
         <button
+          className={'chip' + (filter === 'expense' ? ' active' : '')}
+          onClick={() => setFilter('expense')}
+        >
+          🔻 Ausgaben
+        </button>
+        <button
+          className={'chip' + (filter === 'income' ? ' active' : '')}
+          onClick={() => setFilter('income')}
+        >
+          🔺 Einnahmen
+        </button>
+        <button
           className={'chip' + (filter === 'uncategorized' ? ' active' : '')}
           onClick={() => setFilter('uncategorized')}
         >
@@ -135,6 +152,7 @@ export default function Transactions() {
                       {formatDate(t.date)}
                       {t.counterparty ? ` · ${t.counterparty}` : ''}
                       {t.note ? ` · 📝` : ''}
+                      {cat?.excludeFromStats ? ' · 🔄 nicht gewertet' : ''}
                     </span>
                   </span>
                   <span className={'tx-amount ' + (t.amount < 0 ? 'neg' : 'pos')}>

@@ -69,7 +69,7 @@ export async function ensureSeeded(): Promise<void> {
 
 // IDs von Standardkategorien, die nach dem ersten Release ergänzt wurden.
 // Werden bei bestehenden Installationen einmalig nachgezogen (nur falls fehlend).
-const LATER_ADDED_CATEGORY_IDS = ['cat-gluecksspiel']
+const LATER_ADDED_CATEGORY_IDS = ['cat-gluecksspiel', 'cat-umbuchung']
 
 /**
  * Sanfte Migrationen für bestehende Installationen.

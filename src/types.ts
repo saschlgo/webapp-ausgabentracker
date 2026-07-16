@@ -15,6 +15,12 @@ export interface Category {
   isDefault?: boolean
   /** Sortierreihenfolge in Listen. */
   order?: number
+  /**
+   * Wenn true, zählen Buchungen dieser Kategorie NICHT in die Auswertung
+   * (Ausgaben/Einnahmen/Saldo, Dashboard-Charts). Für Umbuchungen zwischen
+   * eigenen Konten, Sparüberträge o. Ä.
+   */
+  excludeFromStats?: boolean
 }
 
 /** Herkunft einer Buchung. */
