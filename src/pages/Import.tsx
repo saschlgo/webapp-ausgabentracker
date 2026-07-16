@@ -4,6 +4,7 @@ import { db, newId } from '../db/db'
 import {
   detectDelimiter,
   detectEncoding,
+  detectHeaderRow,
   guessColumns,
   guessDateFormat,
   guessDecimalSeparator,
@@ -64,11 +65,13 @@ export default function Import() {
   const [error, setError] = useState('')
 
   async function reparseWith(rows: string[][], enc: Encoding, delim: string) {
-    const cfgBase = { encoding: enc, delimiter: delim, skipRows: 0 }
-    const headers = rows[0] ?? []
+    // Kopfzeile automatisch finden (überspringt Info-/Leerzeilen im Vorspann).
+    const headerIdx = detectHeaderRow(rows)
+    const cfgBase = { encoding: enc, delimiter: delim, skipRows: headerIdx }
+    const headers = rows[headerIdx] ?? []
     const guessed = guessColumns(headers)
     // Beispielwerte für Betrag/Datum sammeln.
-    const dataRows = rows.slice(1, 8)
+    const dataRows = rows.slice(headerIdx + 1, headerIdx + 8)
     const dateIdx = headers.indexOf(guessed.date)
     const amountIdx = guessed.amount ? headers.indexOf(guessed.amount) : -1
     const dateSamples = dataRows.map((r) => r[dateIdx] ?? '').filter(Boolean)
