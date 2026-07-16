@@ -411,7 +411,7 @@ textarea {
 
 .tx-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 12px;
   background: var(--surface);
@@ -441,20 +441,23 @@ textarea {
 }
 
 .tx-title {
+  display: block;
   font-weight: 600;
   font-size: 0.95rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.3;
+  /* Langer Text bricht um, das Kästchen wächst in der Höhe mit. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .tx-sub {
+  display: block;
   font-size: 0.8rem;
   color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
+  line-height: 1.35;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .tx-amount {
@@ -462,6 +465,8 @@ textarea {
   font-weight: 700;
   font-size: 0.98rem;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1.3;
 }
 
 .tx-amount.neg {
