@@ -18,6 +18,7 @@ import { useCategoryMap } from '../hooks/data'
 import { UNCATEGORIZED_COLOR } from '../db/seed'
 import { formatCurrency, formatCurrencyShort, formatMonthShort } from '../lib/format'
 import { RANGE_LABELS, rangeForPreset, type RangePreset } from '../lib/dateRange'
+import type { Category } from '../types'
 import {
   computeSummary,
   expensesByCategory,
@@ -101,6 +102,28 @@ export default function Dashboard() {
       }
     })
   }, [inRange, catMap])
+
+  // Budgets: Ausgaben des laufenden Monats je Kategorie mit Monatslimit.
+  const budgets = useMemo(() => {
+    const cm = rangeForPreset('thisMonth')
+    const monthTx = filterByRange(transactions ?? [], cm.from, cm.to)
+    const spentByCat = new Map<string, number>()
+    for (const t of monthTx) {
+      if (t.amount >= 0 || !t.categoryId) continue
+      spentByCat.set(
+        t.categoryId,
+        (spentByCat.get(t.categoryId) ?? 0) + -t.amount,
+      )
+    }
+    const list: { cat: Category; spent: number; budget: number; pct: number }[] =
+      []
+    for (const c of catMap.values()) {
+      if (!c.budget || c.budget <= 0) continue
+      const spent = spentByCat.get(c.id) ?? 0
+      list.push({ cat: c, spent, budget: c.budget, pct: spent / c.budget })
+    }
+    return list.sort((a, b) => b.pct - a.pct)
+  }, [transactions, catMap])
 
   // Verlauf: immer die letzten 6 Monate (unabhängig vom Filter).
   const trend = useMemo(() => {
@@ -203,6 +226,66 @@ export default function Dashboard() {
             <div className="hint">Tippen, um sie zuzuordnen →</div>
           </span>
         </Link>
+      )}
+
+      {/* Budgets (laufender Monat) */}
+      {budgets.length > 0 && (
+        <div className="card">
+          <h3 className="card-title">Budgets · diesen Monat</h3>
+          <div className="stack" style={{ gap: 14 }}>
+            {budgets.map(({ cat, spent, budget, pct }) => {
+              const over = spent > budget
+              const remaining = budget - spent
+              const barColor =
+                pct >= 1
+                  ? 'var(--danger)'
+                  : pct >= 0.8
+                    ? '#f59e0b'
+                    : 'var(--success)'
+              return (
+                <div key={cat.id}>
+                  <div className="row-between" style={{ marginBottom: 6 }}>
+                    <span style={{ fontWeight: 600 }}>
+                      {cat.emoji} {cat.name}
+                    </span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.9rem' }}>
+                      {formatCurrency(spent)}{' '}
+                      <span className="muted">/ {formatCurrency(budget)}</span>
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      height: 8,
+                      borderRadius: 999,
+                      background: 'var(--surface-2)',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${Math.min(pct, 1) * 100}%`,
+                        height: '100%',
+                        background: barColor,
+                        transition: 'width 0.3s',
+                      }}
+                    />
+                  </div>
+                  <div
+                    className="hint"
+                    style={{
+                      marginTop: 4,
+                      color: over ? 'var(--danger)' : undefined,
+                    }}
+                  >
+                    {over
+                      ? `${formatCurrency(-remaining)} über Budget`
+                      : `noch ${formatCurrency(remaining)} · ${Math.round(pct * 100)}%`}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       )}
 
       {/* Ausgaben nach Kategorie */}
