@@ -29,6 +29,8 @@ export const UNCATEGORIZED_COLOR = '#cbd5e1'
  * Nutzer können sie unter „Mehr → Regeln" jederzeit anpassen oder löschen.
  */
 const RULE_SEED: { pattern: string; categoryId: string }[] = [
+  // Spezifische Regeln zuerst (erste passende Regel gewinnt)
+  { pattern: 'aldi talk', categoryId: 'cat-abos' },
   // Lebensmittel
   { pattern: 'rewe', categoryId: 'cat-lebensmittel' },
   { pattern: 'edeka', categoryId: 'cat-lebensmittel' },
@@ -74,9 +76,23 @@ const RULE_SEED: { pattern: string; categoryId: string }[] = [
   { pattern: 'mcdonald', categoryId: 'cat-restaurant' },
   { pattern: 'starbucks', categoryId: 'cat-restaurant' },
   { pattern: 'lieferando', categoryId: 'cat-restaurant' },
+  { pattern: 'caffe', categoryId: 'cat-restaurant' },
+  { pattern: 'too good to go', categoryId: 'cat-restaurant' },
   // Freizeit
   { pattern: 'kino', categoryId: 'cat-freizeit' },
   { pattern: 'cinema', categoryId: 'cat-freizeit' },
+  { pattern: 'lotto', categoryId: 'cat-freizeit' },
+  { pattern: 'europa park', categoryId: 'cat-freizeit' },
+  // Shopping
+  { pattern: 'temu', categoryId: 'cat-shopping' },
+  // Versicherung & Finanzen
+  { pattern: 'versicherung', categoryId: 'cat-versicherung' },
+  { pattern: 'lebensversicher', categoryId: 'cat-versicherung' },
+  { pattern: 'baloise', categoryId: 'cat-versicherung' },
+  { pattern: 'scalable', categoryId: 'cat-versicherung' },
+  { pattern: 'sparplan', categoryId: 'cat-versicherung' },
+  { pattern: 'darl.-leistung', categoryId: 'cat-versicherung' },
+  { pattern: 'kreditkartenabrechnung', categoryId: 'cat-versicherung' },
   // Einkommen
   { pattern: 'gehalt', categoryId: 'cat-einkommen' },
   { pattern: 'lohn', categoryId: 'cat-einkommen' },

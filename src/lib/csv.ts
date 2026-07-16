@@ -48,6 +48,49 @@ export function parseRaw(text: string, delimiter: string): string[][] {
   return (result.data || []).filter((row) => row.length > 0)
 }
 
+// Typische Wörter in einer Kontoauszug-Kopfzeile.
+const HEADER_KEYWORDS = [
+  /buchung/,
+  /datum/,
+  /wertstellung/,
+  /valuta/,
+  /betrag/,
+  /umsatz/,
+  /verwendungszweck/,
+  /empf/,
+  /auftraggeber/,
+  /iban/,
+  /soll/,
+  /haben/,
+  /waehrung|währung/,
+]
+
+/**
+ * Findet die Zeile, die am ehesten die Tabellen-Kopfzeile ist.
+ * Viele Banken (z. B. DKB, Sparkasse) stellen der Tabelle mehrere
+ * Info-/Leerzeilen voran – diese werden so automatisch übersprungen.
+ * Gibt den Zeilenindex zurück (0, wenn keine eindeutige Kopfzeile gefunden).
+ */
+export function detectHeaderRow(rows: string[][]): number {
+  let bestIdx = 0
+  let bestScore = 0
+  const limit = Math.min(rows.length, 25)
+  for (let i = 0; i < limit; i++) {
+    const cells = rows[i].map((c) => (c || '').toLowerCase())
+    let score = 0
+    for (const cell of cells) {
+      if (HEADER_KEYWORDS.some((k) => k.test(cell))) score++
+    }
+    // Erste Zeile mit der höchsten Trefferzahl gewinnt.
+    if (score > bestScore) {
+      bestScore = score
+      bestIdx = i
+    }
+  }
+  // Nur akzeptieren, wenn mindestens zwei Kopf-Begriffe gefunden wurden.
+  return bestScore >= 2 ? bestIdx : 0
+}
+
 /**
  * Wandelt einen Betrags-String in eine Zahl um.
  * Behandelt Tausendertrennzeichen, Dezimalkomma/-punkt, führendes und
