@@ -5,6 +5,8 @@ import {
   Bar,
   BarChart,
   Cell,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -14,9 +16,10 @@ import {
 import PageHeader from '../components/PageHeader'
 import EmptyState from '../components/EmptyState'
 import { db } from '../db/db'
-import { useCategoryMap } from '../hooks/data'
+import { useCategoryMap, useSettings } from '../hooks/data'
 import { UNCATEGORIZED_COLOR } from '../db/seed'
-import { formatCurrency, formatCurrencyShort, formatMonthShort } from '../lib/format'
+import { currentBalance, monthlyEndBalances } from '../lib/balance'
+import { formatCurrency, formatCurrencyShort, formatDate, formatMonthShort } from '../lib/format'
 import { RANGE_LABELS, rangeForPreset, type RangePreset } from '../lib/dateRange'
 import type { Category } from '../types'
 import {
@@ -32,8 +35,34 @@ const PRESETS: RangePreset[] = ['thisMonth', 'lastMonth', 'last3Months', 'thisYe
 
 export default function Dashboard() {
   const catMap = useCategoryMap()
+  const settings = useSettings()
   const [preset, setPreset] = useState<RangePreset>('thisMonth')
   const transactions = useLiveQuery(() => db.transactions.toArray(), [])
+
+  const anchor = settings?.balanceAnchor
+
+  // Aktueller Kontostand (falls Anker gesetzt).
+  const kontostand = useMemo(
+    () => (anchor ? currentBalance(transactions ?? [], anchor) : null),
+    [transactions, anchor],
+  )
+
+  // Kontostand-Verlauf: Monatsend-Stände der letzten 6 Monate.
+  const last6MonthKeys = useMemo(() => {
+    const keys: string[] = []
+    const now = new Date()
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+    }
+    return keys
+  }, [])
+
+  const balanceTrend = useMemo(
+    () =>
+      anchor ? monthlyEndBalances(transactions ?? [], anchor, last6MonthKeys) : [],
+    [transactions, anchor, last6MonthKeys],
+  )
 
   const range = useMemo(() => rangeForPreset(preset), [preset])
 
@@ -169,6 +198,37 @@ export default function Dashboard() {
   return (
     <>
       <PageHeader title="Übersicht" subtitle="Wohin fließt dein Geld?" />
+
+      {kontostand !== null && anchor && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 14,
+            background:
+              'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #000))',
+            color: '#fff',
+            border: 'none',
+          }}
+        >
+          <div style={{ fontSize: '0.8rem', opacity: 0.85, fontWeight: 600 }}>
+            💶 Kontostand
+          </div>
+          <div
+            style={{
+              fontSize: '2rem',
+              fontWeight: 800,
+              letterSpacing: '-0.02em',
+              marginTop: 2,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {formatCurrency(kontostand)}
+          </div>
+          <div style={{ fontSize: '0.78rem', opacity: 0.8, marginTop: 2 }}>
+            Anker: {formatCurrency(anchor.amount)} am {formatDate(anchor.date)}
+          </div>
+        </div>
+      )}
 
       <div className="chip-row" style={{ marginBottom: 14 }}>
         {PRESETS.map((p) => (
@@ -388,6 +448,38 @@ export default function Dashboard() {
                 />
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kontostand-Verlauf */}
+      {anchor && balanceTrend.length > 0 && (
+        <div className="card">
+          <h3 className="card-title">Kontostand-Verlauf (Monatsende)</h3>
+          <div style={{ width: '100%', height: 200 }}>
+            <ResponsiveContainer>
+              <LineChart data={balanceTrend}>
+                <XAxis
+                  dataKey="monthKey"
+                  tickFormatter={formatMonthShort}
+                  tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  formatter={(value: number) => [formatCurrency(value), 'Kontostand']}
+                  labelFormatter={(l) => formatMonthShort(String(l))}
+                  contentStyle={tooltipStyle}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="balance"
+                  stroke="var(--accent)"
+                  strokeWidth={2.5}
+                  dot={{ r: 3, fill: 'var(--accent)' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
       )}
