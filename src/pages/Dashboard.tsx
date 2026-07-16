@@ -22,6 +22,7 @@ import {
   computeSummary,
   expensesByCategory,
   filterByRange,
+  incomeByCategory,
   monthlyTotals,
   topExpenses,
 } from '../lib/stats'
@@ -88,6 +89,19 @@ export default function Dashboard() {
     return items
   }, [inRange, catMap])
 
+  // Einnahmen nach Kategorie (z. B. Gehalt vs. Erstattung vs. privat).
+  const incomeBreak = useMemo(() => {
+    return incomeByCategory(inRange).map((c) => {
+      const cat = c.categoryId ? catMap.get(c.categoryId) : undefined
+      return {
+        name: cat ? cat.name : 'Nicht kategorisiert',
+        emoji: cat?.emoji ?? '❓',
+        value: c.total,
+        color: cat?.color ?? UNCATEGORIZED_COLOR,
+      }
+    })
+  }, [inRange, catMap])
+
   // Verlauf: immer die letzten 6 Monate (unabhängig vom Filter).
   const trend = useMemo(() => {
     const all = monthlyTotals(counted)
@@ -127,6 +141,7 @@ export default function Dashboard() {
   }
 
   const totalExpenses = summary.expenses || 1
+  const totalIncome = summary.income || 1
 
   return (
     <>
@@ -242,6 +257,57 @@ export default function Dashboard() {
           </>
         )}
       </div>
+
+      {/* Einnahmen nach Kategorie */}
+      {incomeBreak.length > 0 && (
+        <div className="card">
+          <h3 className="card-title">Einnahmen nach Kategorie</h3>
+          <div className="stack">
+            {incomeBreak.map((d, i) => (
+              <div key={i} className="row-between">
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <span className="badge-dot" style={{ background: d.color }} />
+                  <span
+                    style={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {d.emoji} {d.name}
+                  </span>
+                </span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>
+                  {formatCurrency(d.value)}{' '}
+                  <span className="muted" style={{ fontSize: '0.8rem' }}>
+                    {Math.round((d.value / totalIncome) * 100)}%
+                  </span>
+                </span>
+              </div>
+            ))}
+            {/* Proportionsbalken der Einnahmen-Anteile */}
+            <div
+              style={{
+                display: 'flex',
+                height: 10,
+                borderRadius: 999,
+                overflow: 'hidden',
+                marginTop: 4,
+              }}
+            >
+              {incomeBreak.map((d, i) => (
+                <span
+                  key={i}
+                  style={{
+                    width: `${(d.value / totalIncome) * 100}%`,
+                    background: d.color,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Monatsverlauf */}
       <div className="card">

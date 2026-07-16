@@ -51,6 +51,19 @@ export function expensesByCategory(transactions: Transaction[]): CategoryTotal[]
     .sort((a, b) => b.total - a.total)
 }
 
+/** Einnahmen je Kategorie (nur positive Buchungen), absteigend sortiert. */
+export function incomeByCategory(transactions: Transaction[]): CategoryTotal[] {
+  const map = new Map<string | null, number>()
+  for (const t of transactions) {
+    if (t.amount <= 0) continue
+    const key = t.categoryId ?? null
+    map.set(key, (map.get(key) ?? 0) + t.amount)
+  }
+  return Array.from(map.entries())
+    .map(([categoryId, total]) => ({ categoryId, total }))
+    .sort((a, b) => b.total - a.total)
+}
+
 export interface MonthlyTotal {
   monthKey: string // YYYY-MM
   expenses: number
