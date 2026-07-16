@@ -19,6 +19,8 @@ import { db } from '../db/db'
 import { useCategoryMap, useSettings } from '../hooks/data'
 import { UNCATEGORIZED_COLOR } from '../db/seed'
 import { currentBalance, monthlyEndBalances } from '../lib/balance'
+import { topLevelId } from '../lib/categoryTree'
+import type { CategoryTotal } from '../lib/stats'
 import { formatCurrency, formatCurrencyShort, formatDate, formatMonthShort } from '../lib/format'
 import { RANGE_LABELS, rangeForPreset, type RangePreset } from '../lib/dateRange'
 import type { Category } from '../types'
@@ -37,6 +39,7 @@ export default function Dashboard() {
   const catMap = useCategoryMap()
   const settings = useSettings()
   const [preset, setPreset] = useState<RangePreset>('thisMonth')
+  const [expandedCat, setExpandedCat] = useState<string | null>(null)
   const transactions = useLiveQuery(() => db.transactions.toArray(), [])
 
   const anchor = settings?.balanceAnchor
@@ -98,35 +101,65 @@ export default function Dashboard() {
 
   const summary = useMemo(() => computeSummary(inRange), [inRange])
 
-  // Donut-Daten: Top 6 Kategorien + Rest zusammenfassen.
+  // Donut-Daten: nach Oberkategorie zusammengefasst, Top 6 + Rest.
   const donut = useMemo(() => {
-    const byCat = expensesByCategory(inRange)
-    const top = byCat.slice(0, 6)
-    const rest = byCat.slice(6)
-    const restTotal = rest.reduce((s, c) => s + c.total, 0)
-    const items = top.map((c) => {
-      const cat = c.categoryId ? catMap.get(c.categoryId) : undefined
+    const rolls = rollUp(expensesByCategory(inRange), catMap)
+    const top = rolls.slice(0, 6)
+    const rest = rolls.slice(6)
+    const restTotal = rest.reduce((s, r) => s + r.total, 0)
+    const items = top.map((r) => {
+      const cat = r.key ? catMap.get(r.key) : undefined
+      // Aufschlüsselung in Unterkategorien (+ „direkt" auf der Oberkategorie).
+      const kids = r.children
+        .slice()
+        .sort((a, b) => b.total - a.total)
+        .map((ch) => {
+          const cc = catMap.get(ch.id)
+          return {
+            name: cc?.name ?? '—',
+            emoji: cc?.emoji ?? '',
+            color: cc?.color ?? UNCATEGORIZED_COLOR,
+            value: ch.total,
+          }
+        })
+      if (kids.length > 0 && r.self > 0 && cat) {
+        kids.push({
+          name: `Direkt`,
+          emoji: cat.emoji,
+          color: cat.color,
+          value: r.self,
+        })
+      }
       return {
+        key: r.key ?? 'none',
         name: cat ? cat.name : 'Nicht kategorisiert',
         emoji: cat?.emoji ?? '❓',
-        value: c.total,
+        value: r.total,
         color: cat?.color ?? UNCATEGORIZED_COLOR,
+        children: kids,
       }
     })
     if (restTotal > 0) {
-      items.push({ name: 'Weitere', emoji: '➕', value: restTotal, color: '#cbd5e1' })
+      items.push({
+        key: 'more',
+        name: 'Weitere',
+        emoji: '➕',
+        value: restTotal,
+        color: '#cbd5e1',
+        children: [],
+      })
     }
     return items
   }, [inRange, catMap])
 
-  // Einnahmen nach Kategorie (z. B. Gehalt vs. Erstattung vs. privat).
+  // Einnahmen nach Kategorie (nach Oberkategorie zusammengefasst).
   const incomeBreak = useMemo(() => {
-    return incomeByCategory(inRange).map((c) => {
-      const cat = c.categoryId ? catMap.get(c.categoryId) : undefined
+    return rollUp(incomeByCategory(inRange), catMap).map((r) => {
+      const cat = r.key ? catMap.get(r.key) : undefined
       return {
         name: cat ? cat.name : 'Nicht kategorisiert',
         emoji: cat?.emoji ?? '❓',
-        value: c.total,
+        value: r.total,
         color: cat?.color ?? UNCATEGORIZED_COLOR,
       }
     })
@@ -136,19 +169,17 @@ export default function Dashboard() {
   const budgets = useMemo(() => {
     const cm = rangeForPreset('thisMonth')
     const monthTx = filterByRange(transactions ?? [], cm.from, cm.to)
-    const spentByCat = new Map<string, number>()
-    for (const t of monthTx) {
-      if (t.amount >= 0 || !t.categoryId) continue
-      spentByCat.set(
-        t.categoryId,
-        (spentByCat.get(t.categoryId) ?? 0) + -t.amount,
-      )
-    }
     const list: { cat: Category; spent: number; budget: number; pct: number }[] =
       []
     for (const c of catMap.values()) {
       if (!c.budget || c.budget <= 0) continue
-      const spent = spentByCat.get(c.id) ?? 0
+      // Ausgabe der Kategorie inkl. ihrer Unterkategorien.
+      let spent = 0
+      for (const t of monthTx) {
+        if (t.amount >= 0 || !t.categoryId) continue
+        const parent = catMap.get(t.categoryId)?.parentId
+        if (t.categoryId === c.id || parent === c.id) spent += -t.amount
+      }
       list.push({ cat: c, spent, budget: c.budget, pct: spent / c.budget })
     }
     return list.sort((a, b) => b.pct - a.pct)
@@ -379,23 +410,69 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
             <div className="stack" style={{ marginTop: 8 }}>
-              {donut.map((d, i) => (
-                <div key={i} className="row-between">
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span
-                      className="badge-dot"
-                      style={{ background: d.color }}
-                    />
-                    {d.emoji} {d.name}
-                  </span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {formatCurrency(d.value)}{' '}
-                    <span className="muted" style={{ fontSize: '0.8rem' }}>
-                      {Math.round((d.value / totalExpenses) * 100)}%
-                    </span>
-                  </span>
-                </div>
-              ))}
+              {donut.map((d) => {
+                const canExpand = d.children.length > 0
+                const open = expandedCat === d.key
+                return (
+                  <div key={d.key}>
+                    <div
+                      className="row-between"
+                      style={{ cursor: canExpand ? 'pointer' : 'default' }}
+                      onClick={
+                        canExpand
+                          ? () => setExpandedCat(open ? null : d.key)
+                          : undefined
+                      }
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span className="badge-dot" style={{ background: d.color }} />
+                        {d.emoji} {d.name}
+                        {canExpand && (
+                          <span className="muted" style={{ fontSize: '0.8rem' }}>
+                            {open ? '▾' : '▸'}
+                          </span>
+                        )}
+                      </span>
+                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                        {formatCurrency(d.value)}{' '}
+                        <span className="muted" style={{ fontSize: '0.8rem' }}>
+                          {Math.round((d.value / totalExpenses) * 100)}%
+                        </span>
+                      </span>
+                    </div>
+                    {open &&
+                      d.children.map((ch, j) => (
+                        <div
+                          key={j}
+                          className="row-between"
+                          style={{ marginLeft: 22, marginTop: 6 }}
+                        >
+                          <span
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              fontSize: '0.9rem',
+                            }}
+                          >
+                            <span
+                              className="badge-dot"
+                              style={{ background: ch.color, opacity: 0.7 }}
+                            />
+                            {ch.emoji} {ch.name}
+                          </span>
+                          <span
+                            className="muted"
+                            style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.9rem' }}
+                          >
+                            {formatCurrency(ch.value)}{' '}
+                            {Math.round((ch.value / d.value) * 100)}%
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                )
+              })}
             </div>
           </>
         )}
@@ -579,4 +656,31 @@ const tooltipStyle: React.CSSProperties = {
   fontSize: '0.85rem',
   color: 'var(--text)',
   boxShadow: 'var(--shadow-lg)',
+}
+
+interface Roll {
+  key: string | null
+  total: number
+  self: number
+  children: { id: string; total: number }[]
+}
+
+/** Fasst Kategorie-Summen unter ihrer Oberkategorie zusammen. */
+function rollUp(raw: CategoryTotal[], catMap: Map<string, Category>): Roll[] {
+  const map = new Map<string | null, Roll>()
+  for (const e of raw) {
+    const key = topLevelId(catMap, e.categoryId)
+    let r = map.get(key)
+    if (!r) {
+      r = { key, total: 0, self: 0, children: [] }
+      map.set(key, r)
+    }
+    r.total += e.total
+    if (e.categoryId && e.categoryId !== key) {
+      r.children.push({ id: e.categoryId, total: e.total })
+    } else {
+      r.self += e.total
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => b.total - a.total)
 }

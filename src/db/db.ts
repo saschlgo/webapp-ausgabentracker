@@ -74,6 +74,11 @@ const LATER_ADDED_CATEGORY_IDS = [
   'cat-umbuchung',
   'cat-erstattung',
   'cat-private-einnahme',
+  'cat-shop-kleidung',
+  'cat-shop-technik',
+  'cat-shop-krimskrams',
+  'cat-rest-privat',
+  'cat-rest-beruflich',
 ]
 
 /**

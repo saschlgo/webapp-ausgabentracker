@@ -16,6 +16,11 @@ export interface Category {
   /** Sortierreihenfolge in Listen. */
   order?: number
   /**
+   * ID der übergeordneten Kategorie (Unterkategorie). Maximal 2 Ebenen:
+   * eine Kategorie mit `parentId` ist eine Unterkategorie und hat selbst keine.
+   */
+  parentId?: string
+  /**
    * Wenn true, zählen Buchungen dieser Kategorie NICHT in die Auswertung
    * (Ausgaben/Einnahmen/Saldo, Dashboard-Charts). Für Umbuchungen zwischen
    * eigenen Konten, Sparüberträge o. Ä.

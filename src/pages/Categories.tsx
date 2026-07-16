@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
 import Sheet from '../components/Sheet'
 import { db, newId } from '../db/db'
+import { sortHierarchical } from '../db/seed'
 import { useCategories } from '../hooks/data'
 import { parseAmount } from '../lib/csv'
 import { formatCurrency } from '../lib/format'
@@ -53,26 +54,45 @@ export default function Categories() {
       </button>
 
       <div className="stack">
-        {(categories ?? []).map((c) => (
-          <button
-            key={c.id}
-            className="tx-item"
-            onClick={() => setEditing(c)}
-          >
-            <span className="tx-emoji" style={{ background: c.color + '22' }}>
-              {c.emoji}
-            </span>
-            <span className="tx-body">
-              <span className="tx-title">{c.name}</span>
-              <span className="tx-sub">
-                {KIND_LABELS[c.kind]}
-                {c.budget ? ` · 🎯 ${formatCurrency(c.budget)}/Monat` : ''}
-                {c.excludeFromStats ? ' · 🔄 nicht gewertet' : ''}
+        {sortHierarchical(categories ?? []).map((c) => {
+          const isChild = !!c.parentId
+          return (
+            <button
+              key={c.id}
+              className="tx-item"
+              onClick={() => setEditing(c)}
+              style={
+                isChild
+                  ? { marginLeft: 24, borderStyle: 'dashed' }
+                  : undefined
+              }
+            >
+              <span
+                className="tx-emoji"
+                style={{
+                  background: c.color + '22',
+                  width: isChild ? 34 : 42,
+                  height: isChild ? 34 : 42,
+                  fontSize: isChild ? '1rem' : '1.25rem',
+                }}
+              >
+                {c.emoji}
               </span>
-            </span>
-            <span className="badge-dot" style={{ background: c.color }} />
-          </button>
-        ))}
+              <span className="tx-body">
+                <span className="tx-title">
+                  {isChild ? '↳ ' : ''}
+                  {c.name}
+                </span>
+                <span className="tx-sub">
+                  {KIND_LABELS[c.kind]}
+                  {c.budget ? ` · 🎯 ${formatCurrency(c.budget)}/Monat` : ''}
+                  {c.excludeFromStats ? ' · 🔄 nicht gewertet' : ''}
+                </span>
+              </span>
+              <span className="badge-dot" style={{ background: c.color }} />
+            </button>
+          )
+        })}
       </div>
 
       {(creating || editing) && (
@@ -105,11 +125,20 @@ function CategoryEditor({
   const [budgetText, setBudgetText] = useState(
     category?.budget ? String(category.budget).replace('.', ',') : '',
   )
+  const [parentId, setParentId] = useState(category?.parentId ?? '')
+
+  const allCats = useCategories() ?? []
+  const isParentOfOthers = allCats.some((c) => c.parentId === category?.id)
+  // Mögliche Oberkategorien: nur Ebene-1-Kategorien, nicht man selbst.
+  const parentOptions = allCats.filter(
+    (c) => !c.parentId && c.id !== category?.id,
+  )
 
   async function save() {
     if (!name.trim()) return
     const parsedBudget = Math.abs(parseAmount(budgetText, ','))
     const budget = budgetText.trim() && !isNaN(parsedBudget) ? parsedBudget : 0
+    const parent = parentId || undefined
     if (category) {
       await db.categories.update(category.id, {
         name: name.trim(),
@@ -118,6 +147,7 @@ function CategoryEditor({
         kind,
         excludeFromStats,
         budget,
+        parentId: parent,
       })
     } else {
       await db.categories.add({
@@ -125,6 +155,7 @@ function CategoryEditor({
         name: name.trim(),
         emoji,
         color,
+        parentId: parent,
         kind,
         order: 50,
         excludeFromStats,
@@ -152,6 +183,13 @@ function CategoryEditor({
       )
       const rules = await db.rules.where('categoryId').equals(category.id).toArray()
       await Promise.all(rules.map((r) => db.rules.delete(r.id)))
+      // Unterkategorien zu Oberkategorien hochstufen (nicht verwaisen lassen).
+      const kids = await db.categories
+        .filter((c) => c.parentId === category.id)
+        .toArray()
+      await Promise.all(
+        kids.map((k) => db.categories.update(k.id, { parentId: undefined })),
+      )
       await db.categories.delete(category.id)
     })
     onClose()
@@ -200,6 +238,25 @@ function CategoryEditor({
           ))}
         </div>
       </div>
+
+      <label className="field">
+        <span className="field-label">Übergeordnete Kategorie</span>
+        {isParentOfOthers ? (
+          <p className="hint" style={{ margin: 0 }}>
+            Diese Kategorie hat bereits Unterkategorien und kann daher keiner
+            anderen untergeordnet werden.
+          </p>
+        ) : (
+          <select value={parentId} onChange={(e) => setParentId(e.target.value)}>
+            <option value="">— keine (Oberkategorie) —</option>
+            {parentOptions.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.emoji} {c.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </label>
 
       <div className="field">
         <span className="field-label">Symbol</span>
