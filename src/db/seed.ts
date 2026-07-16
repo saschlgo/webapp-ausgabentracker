@@ -18,6 +18,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-bildung', name: 'Bildung', emoji: '📚', color: '#6366f1', kind: 'expense', isDefault: true, order: 10 },
   { id: 'cat-versicherung', name: 'Versicherung & Finanzen', emoji: '🛡️', color: '#64748b', kind: 'expense', isDefault: true, order: 11 },
   { id: 'cat-einkommen', name: 'Einkommen', emoji: '💰', color: '#16a34a', kind: 'income', isDefault: true, order: 12 },
+  { id: 'cat-umbuchung', name: 'Umbuchung / Intern', emoji: '🔄', color: '#78716c', kind: 'both', isDefault: true, order: 13, excludeFromStats: true },
   { id: 'cat-sonstiges', name: 'Sonstiges', emoji: '❓', color: '#94a3b8', kind: 'both', isDefault: true, order: 99 },
 ]
 
@@ -104,6 +105,10 @@ const RULE_SEED: { pattern: string; categoryId: string }[] = [
   // Einkommen
   { pattern: 'gehalt', categoryId: 'cat-einkommen' },
   { pattern: 'lohn', categoryId: 'cat-einkommen' },
+  // Umbuchung / Intern (zählt nicht in die Auswertung)
+  { pattern: 'übertrag', categoryId: 'cat-umbuchung' },
+  { pattern: 'uebertrag', categoryId: 'cat-umbuchung' },
+  { pattern: 'umbuchung', categoryId: 'cat-umbuchung' },
 ]
 
 /** Erzeugt die Standard-Regeln mit stabilen IDs und Zeitstempel. */

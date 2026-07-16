@@ -57,7 +57,10 @@ export default function Categories() {
             </span>
             <span className="tx-body">
               <span className="tx-title">{c.name}</span>
-              <span className="tx-sub">{KIND_LABELS[c.kind]}</span>
+              <span className="tx-sub">
+                {KIND_LABELS[c.kind]}
+                {c.excludeFromStats ? ' · 🔄 nicht gewertet' : ''}
+              </span>
             </span>
             <span className="badge-dot" style={{ background: c.color }} />
           </button>
@@ -88,6 +91,9 @@ function CategoryEditor({
   const [emoji, setEmoji] = useState(category?.emoji ?? '❓')
   const [color, setColor] = useState(category?.color ?? COLOR_CHOICES[0])
   const [kind, setKind] = useState<CategoryKind>(category?.kind ?? 'expense')
+  const [excludeFromStats, setExcludeFromStats] = useState(
+    category?.excludeFromStats ?? false,
+  )
 
   async function save() {
     if (!name.trim()) return
@@ -97,6 +103,7 @@ function CategoryEditor({
         emoji,
         color,
         kind,
+        excludeFromStats,
       })
     } else {
       await db.categories.add({
@@ -106,6 +113,7 @@ function CategoryEditor({
         color,
         kind,
         order: 50,
+        excludeFromStats,
       })
     }
     onClose()
@@ -218,6 +226,56 @@ function CategoryEditor({
           ))}
         </div>
       </div>
+
+      <button
+        type="button"
+        className="row-between"
+        onClick={() => setExcludeFromStats((v) => !v)}
+        style={{
+          width: '100%',
+          background: 'var(--surface-2)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '12px 14px',
+          textAlign: 'left',
+          color: 'inherit',
+          marginBottom: 4,
+        }}
+      >
+        <span style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600 }}>🔄 Nicht in Auswertung zählen</div>
+          <div className="hint">
+            Für Umbuchungen zwischen eigenen Konten – zählt nicht zu
+            Ausgaben/Einnahmen.
+          </div>
+        </span>
+        <span
+          aria-hidden
+          style={{
+            flex: '0 0 auto',
+            width: 46,
+            height: 28,
+            borderRadius: 999,
+            background: excludeFromStats ? 'var(--accent)' : 'var(--border)',
+            position: 'relative',
+            transition: 'background 0.15s',
+          }}
+        >
+          <span
+            style={{
+              position: 'absolute',
+              top: 3,
+              left: excludeFromStats ? 21 : 3,
+              width: 22,
+              height: 22,
+              borderRadius: '50%',
+              background: '#fff',
+              transition: 'left 0.15s',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+            }}
+          />
+        </span>
+      </button>
 
       <div className="stack" style={{ marginTop: 8 }}>
         <button className="btn btn-primary btn-block" onClick={save}>

@@ -35,9 +35,34 @@ export default function Dashboard() {
 
   const range = useMemo(() => rangeForPreset(preset), [preset])
 
+  // IDs von Kategorien, die aus der Auswertung ausgeschlossen sind (Umbuchungen).
+  const excludedIds = useMemo(() => {
+    const s = new Set<string>()
+    for (const c of catMap.values()) if (c.excludeFromStats) s.add(c.id)
+    return s
+  }, [catMap])
+
+  // Nur gewertete Buchungen (ohne ausgeschlossene Kategorien).
+  const counted = useMemo(
+    () =>
+      (transactions ?? []).filter(
+        (t) => !(t.categoryId && excludedIds.has(t.categoryId)),
+      ),
+    [transactions, excludedIds],
+  )
+
   const inRange = useMemo(
-    () => filterByRange(transactions ?? [], range.from, range.to),
-    [transactions, range],
+    () => filterByRange(counted, range.from, range.to),
+    [counted, range],
+  )
+
+  // Anzahl ausgeschlossener Buchungen im gewählten Zeitraum (nur für Hinweis).
+  const excludedInRange = useMemo(
+    () =>
+      filterByRange(transactions ?? [], range.from, range.to).filter(
+        (t) => t.categoryId && excludedIds.has(t.categoryId),
+      ).length,
+    [transactions, range, excludedIds],
   )
 
   const summary = useMemo(() => computeSummary(inRange), [inRange])
@@ -65,9 +90,9 @@ export default function Dashboard() {
 
   // Verlauf: immer die letzten 6 Monate (unabhängig vom Filter).
   const trend = useMemo(() => {
-    const all = monthlyTotals(transactions ?? [])
+    const all = monthlyTotals(counted)
     return all.slice(-6)
-  }, [transactions])
+  }, [counted])
 
   const top = useMemo(() => topExpenses(inRange, 5), [inRange])
 
@@ -137,6 +162,12 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {excludedInRange > 0 && (
+        <p className="hint center" style={{ marginTop: -4, marginBottom: 14 }}>
+          🔄 {excludedInRange} Umbuchung(en) nicht gewertet
+        </p>
+      )}
 
       {uncategorized > 0 && (
         <Link
