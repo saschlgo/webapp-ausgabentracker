@@ -22,7 +22,35 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-private-einnahme', name: 'Private Einnahme', emoji: '🤝', color: '#84cc16', kind: 'income', isDefault: true, order: 14 },
   { id: 'cat-umbuchung', name: 'Umbuchung / Intern', emoji: '🔄', color: '#78716c', kind: 'both', isDefault: true, order: 15, excludeFromStats: true },
   { id: 'cat-sonstiges', name: 'Sonstiges', emoji: '❓', color: '#94a3b8', kind: 'both', isDefault: true, order: 99 },
+
+  // Unterkategorien (Beispiele) – Ebene 2.
+  { id: 'cat-shop-kleidung', name: 'Kleidung', emoji: '👕', color: '#ec4899', kind: 'expense', isDefault: true, order: 1, parentId: 'cat-shopping' },
+  { id: 'cat-shop-technik', name: 'Technik', emoji: '🖥️', color: '#3b82f6', kind: 'expense', isDefault: true, order: 2, parentId: 'cat-shopping' },
+  { id: 'cat-shop-krimskrams', name: 'Krimskrams', emoji: '🧸', color: '#a78bfa', kind: 'expense', isDefault: true, order: 3, parentId: 'cat-shopping' },
+  { id: 'cat-rest-privat', name: 'Privat', emoji: '🥗', color: '#eab308', kind: 'expense', isDefault: true, order: 1, parentId: 'cat-restaurant' },
+  { id: 'cat-rest-beruflich', name: 'Beruflich', emoji: '💼', color: '#0ea5e9', kind: 'expense', isDefault: true, order: 2, parentId: 'cat-restaurant' },
 ]
+
+/** Sortiert Kategorien hierarchisch: Oberkategorie, dann ihre Unterkategorien. */
+export function sortHierarchical(cats: Category[]): Category[] {
+  const byOrder = (a: Category, b: Category) =>
+    (a.order ?? 999) - (b.order ?? 999)
+  const tops = cats.filter((c) => !c.parentId).sort(byOrder)
+  const childrenOf = (id: string) =>
+    cats.filter((c) => c.parentId === id).sort(byOrder)
+  const result: Category[] = []
+  for (const t of tops) {
+    result.push(t)
+    result.push(...childrenOf(t.id))
+  }
+  // Waisen (Unterkategorie ohne existierende Oberkategorie) hinten anhängen.
+  for (const c of cats) {
+    if (c.parentId && !cats.some((p) => p.id === c.parentId) && !result.includes(c)) {
+      result.push(c)
+    }
+  }
+  return result
+}
 
 /** Farbe für nicht kategorisierte Buchungen in Charts. */
 export const UNCATEGORIZED_COLOR = '#cbd5e1'

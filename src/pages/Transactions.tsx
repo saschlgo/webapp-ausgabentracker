@@ -5,6 +5,7 @@ import EmptyState from '../components/EmptyState'
 import CategoryPicker from '../components/CategoryPicker'
 import Sheet from '../components/Sheet'
 import { db } from '../db/db'
+import { sortHierarchical } from '../db/seed'
 import { useCategoryMap, useSettings } from '../hooks/data'
 import { runningBalances } from '../lib/balance'
 import { formatCurrency, formatDate, formatMonthLabel, monthKeyOf } from '../lib/format'
@@ -35,7 +36,11 @@ export default function Transactions() {
     } else if (filter === 'income') {
       list = list.filter((t) => t.amount > 0)
     } else if (filter !== 'all') {
-      list = list.filter((t) => t.categoryId === filter)
+      list = list.filter((t) => {
+        if (t.categoryId === filter) return true
+        const c = t.categoryId ? catMap.get(t.categoryId) : undefined
+        return c?.parentId === filter
+      })
     }
     // Mehrere Begriffe per Komma → ODER-Verknüpfung (z. B. "Gehalt, Reise").
     const terms = search
@@ -147,12 +152,13 @@ export default function Transactions() {
         >
           ❓ Offen{uncategorizedCount ? ` (${uncategorizedCount})` : ''}
         </button>
-        {Array.from(catMap.values()).map((c) => (
+        {sortHierarchical(Array.from(catMap.values())).map((c) => (
           <button
             key={c.id}
             className={'chip' + (filter === c.id ? ' active' : '')}
             onClick={() => setFilter(c.id)}
           >
+            {c.parentId ? '↳ ' : ''}
             {c.emoji} {c.name}
           </button>
         ))}

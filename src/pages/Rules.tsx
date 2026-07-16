@@ -4,6 +4,7 @@ import PageHeader from '../components/PageHeader'
 import EmptyState from '../components/EmptyState'
 import CategoryBadge from '../components/CategoryBadge'
 import { db, newId } from '../db/db'
+import { sortHierarchical } from '../db/seed'
 import { useCategories, useCategoryMap, useRules } from '../hooks/data'
 import { categorizeByRules } from '../lib/categorize'
 import type { RuleField } from '../types'
@@ -110,8 +111,9 @@ export default function Rules() {
             onChange={(e) => setCategoryId(e.target.value)}
           >
             <option value="">— wählen —</option>
-            {(categories ?? []).map((c) => (
+            {sortHierarchical(categories ?? []).map((c) => (
               <option key={c.id} value={c.id}>
+                {c.parentId ? '↳ ' : ''}
                 {c.emoji} {c.name}
               </option>
             ))}
