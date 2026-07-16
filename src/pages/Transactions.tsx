@@ -17,6 +17,7 @@ export default function Transactions() {
   const catMap = useCategoryMap()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
+  const [month, setMonth] = useState('all') // 'all' | 'YYYY-MM'
   const [selected, setSelected] = useState<Transaction | null>(null)
 
   const transactions = useLiveQuery(
@@ -47,8 +48,11 @@ export default function Transactions() {
         return terms.some((term) => hay.includes(term))
       })
     }
+    if (month !== 'all') {
+      list = list.filter((t) => monthKeyOf(t.date) === month)
+    }
     return list
-  }, [transactions, filter, search])
+  }, [transactions, filter, search, month])
 
   // Nach Monat gruppieren.
   const groups = useMemo(() => {
@@ -67,6 +71,13 @@ export default function Transactions() {
     [transactions],
   )
 
+  // Verfügbare Monate (aus allen Buchungen), neueste zuerst.
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>()
+    for (const t of transactions ?? []) set.add(monthKeyOf(t.date))
+    return Array.from(set).sort((a, b) => (a < b ? 1 : -1))
+  }, [transactions])
+
   // Saldo-Übersicht der aktuell gefilterten/gesuchten Auswahl.
   const summary = useMemo(() => computeSummary(filtered), [filtered])
 
@@ -84,8 +95,21 @@ export default function Transactions() {
         placeholder="🔍 Suchen – mehrere mit Komma: z. B. Gehalt, Reise"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        style={{ marginBottom: 12 }}
+        style={{ marginBottom: 10 }}
       />
+
+      <select
+        value={month}
+        onChange={(e) => setMonth(e.target.value)}
+        style={{ marginBottom: 12 }}
+      >
+        <option value="all">🗓️ Alle Monate</option>
+        {availableMonths.map((m) => (
+          <option key={m} value={m}>
+            {formatMonthLabel(m)}
+          </option>
+        ))}
+      </select>
 
       <div className="chip-row" style={{ marginBottom: 12 }}>
         <button
