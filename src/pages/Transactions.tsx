@@ -7,6 +7,7 @@ import Sheet from '../components/Sheet'
 import { db } from '../db/db'
 import { useCategoryMap } from '../hooks/data'
 import { formatCurrency, formatDate, formatMonthLabel, monthKeyOf } from '../lib/format'
+import { computeSummary } from '../lib/stats'
 import type { Transaction } from '../types'
 
 // 'all' | 'expense' | 'income' | 'uncategorized' | categoryId
@@ -63,6 +64,9 @@ export default function Transactions() {
     [transactions],
   )
 
+  // Saldo-Übersicht der aktuell gefilterten/gesuchten Auswahl.
+  const summary = useMemo(() => computeSummary(filtered), [filtered])
+
   if (transactions === undefined) return <PageHeader title="Buchungen" />
 
   return (
@@ -115,6 +119,55 @@ export default function Transactions() {
           </button>
         ))}
       </div>
+
+      {filtered.length > 0 && (
+        <div className="card" style={{ padding: '12px 14px', marginBottom: 12 }}>
+          <div className="row-between" style={{ marginBottom: 4 }}>
+            <span className="muted" style={{ fontSize: '0.85rem' }}>
+              🔺 Einnahmen
+            </span>
+            <span
+              className="pos"
+              style={{
+                color: 'var(--success)',
+                fontWeight: 600,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {formatCurrency(summary.income)}
+            </span>
+          </div>
+          <div className="row-between">
+            <span className="muted" style={{ fontSize: '0.85rem' }}>
+              🔻 Ausgaben
+            </span>
+            <span
+              style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}
+            >
+              −{formatCurrency(summary.expenses)}
+            </span>
+          </div>
+          <div className="divider" style={{ margin: '10px 0' }} />
+          <div className="row-between">
+            <span style={{ fontWeight: 700 }}>
+              Saldo{' '}
+              <span className="muted" style={{ fontWeight: 400, fontSize: '0.8rem' }}>
+                ({summary.count})
+              </span>
+            </span>
+            <span
+              style={{
+                fontWeight: 700,
+                fontVariantNumeric: 'tabular-nums',
+                color:
+                  summary.balance >= 0 ? 'var(--success)' : 'var(--danger)',
+              }}
+            >
+              {formatCurrency(summary.balance)}
+            </span>
+          </div>
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <EmptyState
