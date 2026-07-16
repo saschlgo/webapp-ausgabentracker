@@ -35,14 +35,17 @@ export default function Transactions() {
     } else if (filter !== 'all') {
       list = list.filter((t) => t.categoryId === filter)
     }
-    const q = search.trim().toLowerCase()
-    if (q) {
-      list = list.filter(
-        (t) =>
-          t.description.toLowerCase().includes(q) ||
-          t.counterparty.toLowerCase().includes(q) ||
-          t.note.toLowerCase().includes(q),
-      )
+    // Mehrere Begriffe per Komma → ODER-Verknüpfung (z. B. "Gehalt, Reise").
+    const terms = search
+      .toLowerCase()
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    if (terms.length) {
+      list = list.filter((t) => {
+        const hay = `${t.description} ${t.counterparty} ${t.note}`.toLowerCase()
+        return terms.some((term) => hay.includes(term))
+      })
     }
     return list
   }, [transactions, filter, search])
@@ -78,7 +81,7 @@ export default function Transactions() {
 
       <input
         type="search"
-        placeholder="🔍 Suchen (Zweck, Empfänger, Notiz)"
+        placeholder="🔍 Suchen – mehrere mit Komma: z. B. Gehalt, Reise"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         style={{ marginBottom: 12 }}
