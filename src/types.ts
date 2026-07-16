@@ -21,6 +21,11 @@ export interface Category {
    * eigenen Konten, Sparüberträge o. Ä.
    */
   excludeFromStats?: boolean
+  /**
+   * Optionales Monatsbudget in Euro (Ausgabenlimit). 0/undefined = kein Budget.
+   * Wird im Dashboard als Fortschritt für den laufenden Monat dargestellt.
+   */
+  budget?: number
 }
 
 /** Herkunft einer Buchung. */

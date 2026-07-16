@@ -4,6 +4,8 @@ import PageHeader from '../components/PageHeader'
 import Sheet from '../components/Sheet'
 import { db, newId } from '../db/db'
 import { useCategories } from '../hooks/data'
+import { parseAmount } from '../lib/csv'
+import { formatCurrency } from '../lib/format'
 import type { Category, CategoryKind } from '../types'
 
 const EMOJI_CHOICES = [
@@ -59,6 +61,7 @@ export default function Categories() {
               <span className="tx-title">{c.name}</span>
               <span className="tx-sub">
                 {KIND_LABELS[c.kind]}
+                {c.budget ? ` · 🎯 ${formatCurrency(c.budget)}/Monat` : ''}
                 {c.excludeFromStats ? ' · 🔄 nicht gewertet' : ''}
               </span>
             </span>
@@ -94,9 +97,14 @@ function CategoryEditor({
   const [excludeFromStats, setExcludeFromStats] = useState(
     category?.excludeFromStats ?? false,
   )
+  const [budgetText, setBudgetText] = useState(
+    category?.budget ? String(category.budget).replace('.', ',') : '',
+  )
 
   async function save() {
     if (!name.trim()) return
+    const parsedBudget = Math.abs(parseAmount(budgetText, ','))
+    const budget = budgetText.trim() && !isNaN(parsedBudget) ? parsedBudget : 0
     if (category) {
       await db.categories.update(category.id, {
         name: name.trim(),
@@ -104,6 +112,7 @@ function CategoryEditor({
         color,
         kind,
         excludeFromStats,
+        budget,
       })
     } else {
       await db.categories.add({
@@ -114,6 +123,7 @@ function CategoryEditor({
         kind,
         order: 50,
         excludeFromStats,
+        budget,
       })
     }
     onClose()
@@ -226,6 +236,19 @@ function CategoryEditor({
           ))}
         </div>
       </div>
+
+      {kind !== 'income' && (
+        <label className="field">
+          <span className="field-label">Monatsbudget (€, optional)</span>
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder="z. B. 150 – leer = kein Budget"
+            value={budgetText}
+            onChange={(e) => setBudgetText(e.target.value)}
+          />
+        </label>
+      )}
 
       <button
         type="button"
