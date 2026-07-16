@@ -110,4 +110,12 @@ export interface Settings {
   id: 'app'
   currency: string
   theme: 'system' | 'light' | 'dark'
+  /**
+   * Kontostand-Ankerpunkt: Am Ende des Tages `date` betrug der Kontostand
+   * `amount` €. Daraus wird der laufende/aktuelle Kontostand berechnet.
+   */
+  balanceAnchor?: {
+    date: string
+    amount: number
+  }
 }

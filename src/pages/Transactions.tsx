@@ -5,7 +5,8 @@ import EmptyState from '../components/EmptyState'
 import CategoryPicker from '../components/CategoryPicker'
 import Sheet from '../components/Sheet'
 import { db } from '../db/db'
-import { useCategoryMap } from '../hooks/data'
+import { useCategoryMap, useSettings } from '../hooks/data'
+import { runningBalances } from '../lib/balance'
 import { formatCurrency, formatDate, formatMonthLabel, monthKeyOf } from '../lib/format'
 import { computeSummary } from '../lib/stats'
 import type { Transaction } from '../types'
@@ -80,6 +81,16 @@ export default function Transactions() {
 
   // Saldo-Übersicht der aktuell gefilterten/gesuchten Auswahl.
   const summary = useMemo(() => computeSummary(filtered), [filtered])
+
+  // Laufender Kontostand je Buchung (über ALLE Buchungen, falls Anker gesetzt).
+  const settings = useSettings()
+  const balances = useMemo(
+    () =>
+      settings?.balanceAnchor
+        ? runningBalances(transactions ?? [], settings.balanceAnchor)
+        : null,
+    [transactions, settings?.balanceAnchor],
+  )
 
   if (transactions === undefined) return <PageHeader title="Buchungen" />
 
@@ -235,8 +246,26 @@ export default function Transactions() {
                       {cat?.excludeFromStats ? ' · 🔄 nicht gewertet' : ''}
                     </span>
                   </span>
-                  <span className={'tx-amount ' + (t.amount < 0 ? 'neg' : 'pos')}>
-                    {formatCurrency(t.amount)}
+                  <span
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-end',
+                      flex: '0 0 auto',
+                      gap: 2,
+                    }}
+                  >
+                    <span className={'tx-amount ' + (t.amount < 0 ? 'neg' : 'pos')}>
+                      {formatCurrency(t.amount)}
+                    </span>
+                    {balances?.has(t.id) && (
+                      <span
+                        className="hint"
+                        style={{ fontVariantNumeric: 'tabular-nums' }}
+                      >
+                        {formatCurrency(balances.get(t.id)!)}
+                      </span>
+                    )}
                   </span>
                 </button>
               )

@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import PageHeader from '../components/PageHeader'
 import { db, newId } from '../db/db'
 import {
+  detectBalanceAnchor,
   detectDelimiter,
   detectEncoding,
   detectHeaderRow,
@@ -63,6 +64,11 @@ export default function Import() {
   const [result, setResult] = useState<ImportResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [detectedAnchor, setDetectedAnchor] = useState<{
+    date: string
+    amount: number
+  } | null>(null)
+  const [adoptAnchor, setAdoptAnchor] = useState(true)
 
   async function reparseWith(rows: string[][], enc: Encoding, delim: string) {
     // Kopfzeile automatisch finden (überspringt Info-/Leerzeilen im Vorspann).
@@ -77,10 +83,14 @@ export default function Import() {
     const dateSamples = dataRows.map((r) => r[dateIdx] ?? '').filter(Boolean)
     const amountSamples =
       amountIdx >= 0 ? dataRows.map((r) => r[amountIdx] ?? '') : []
+    const decSep = guessDecimalSeparator(amountSamples)
+
+    // Kontostand-Anker aus dem Vorspann erkennen (z. B. DKB).
+    setDetectedAnchor(detectBalanceAnchor(rows, decSep))
 
     setConfig({
       ...cfgBase,
-      decimalSeparator: guessDecimalSeparator(amountSamples),
+      decimalSeparator: decSep,
       dateFormat: dateSamples.length ? guessDateFormat(dateSamples[0]) : 'DD.MM.YYYY',
       amountMode: guessed.amountMode,
       columns: {
@@ -225,6 +235,11 @@ export default function Import() {
 
       if (fresh.length) await db.transactions.bulkAdd(fresh)
 
+      // Kontostand-Anker übernehmen (falls erkannt und gewünscht).
+      if (adoptAnchor && detectedAnchor) {
+        await db.settings.update('app', { balanceAnchor: detectedAnchor })
+      }
+
       setResult({
         added: fresh.length,
         duplicates: duplicates.length,
@@ -246,6 +261,8 @@ export default function Import() {
     setResult(null)
     setPresetName('')
     setError('')
+    setDetectedAnchor(null)
+    setAdoptAnchor(true)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -330,6 +347,50 @@ export default function Import() {
       {/* Konfiguration */}
       {config && !result && (
         <>
+          {detectedAnchor && (
+            <div
+              className="card"
+              style={{ borderColor: 'var(--accent)', cursor: 'pointer' }}
+              onClick={() => setAdoptAnchor((v) => !v)}
+            >
+              <div className="row-between">
+                <span style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 600 }}>💶 Kontostand übernehmen</div>
+                  <div className="hint">
+                    {formatCurrency(detectedAnchor.amount)} · Stand{' '}
+                    {formatDate(detectedAnchor.date)}
+                  </div>
+                </span>
+                <span
+                  aria-hidden
+                  style={{
+                    flex: '0 0 auto',
+                    width: 46,
+                    height: 28,
+                    borderRadius: 999,
+                    background: adoptAnchor ? 'var(--accent)' : 'var(--border)',
+                    position: 'relative',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 3,
+                      left: adoptAnchor ? 21 : 3,
+                      width: 22,
+                      height: 22,
+                      borderRadius: '50%',
+                      background: '#fff',
+                      transition: 'left 0.15s',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                    }}
+                  />
+                </span>
+              </div>
+            </div>
+          )}
+
           {presets && presets.length > 0 && (
             <div className="card">
               <h3 className="card-title">Gespeicherte Vorlagen</h3>

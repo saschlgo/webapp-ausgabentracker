@@ -204,6 +204,36 @@ export function parseDate(raw: string, format: string): string | null {
   return iso
 }
 
+/**
+ * Sucht in den Vorspann-Zeilen nach einer „Kontostand vom … : … €"-Angabe
+ * (z. B. DKB) und liefert Datum + Betrag als Kontostand-Anker.
+ */
+export function detectBalanceAnchor(
+  rows: string[][],
+  decimalSeparator: DecimalSeparator,
+): { date: string; amount: number } | null {
+  const dateRe = /(\d{1,2}\.\d{1,2}\.\d{2,4}|\d{4}-\d{2}-\d{2})/
+  const limit = Math.min(rows.length, 15)
+  for (let i = 0; i < limit; i++) {
+    const cells = rows[i] || []
+    const joined = cells.join(' ')
+    if (!/kontostand|kontosaldo/i.test(joined)) continue
+    const dm = dateRe.exec(joined)
+    if (!dm) continue
+    const iso = parseDate(dm[1], guessDateFormat(dm[1]))
+    if (!iso) continue
+    // Betrags-Zelle: bevorzugt mit €/EUR, sonst deutsches Format mit 2 Nachkommastellen.
+    const amountCell =
+      cells.find((c) => /€|eur/i.test(c) && /\d/.test(c)) ??
+      cells.find((c) => /-?\d[\d.\s]*,\d{2}/.test(c) && !/kontostand/i.test(c))
+    if (!amountCell) continue
+    const amount = parseAmount(amountCell, decimalSeparator)
+    if (isNaN(amount)) continue
+    return { date: iso, amount }
+  }
+  return null
+}
+
 /** Rät eine Spaltenzuordnung anhand der Header-Namen. */
 export function guessColumns(headers: string[]): {
   amountMode: AmountMode

@@ -5,6 +5,9 @@ import PageHeader from '../components/PageHeader'
 import { db, wipeAllData } from '../db/db'
 import { useSettings } from '../hooks/data'
 import { exportBackup, importBackup } from '../lib/backup'
+import { parseAmount } from '../lib/csv'
+import { todayIso } from '../lib/dateRange'
+import { formatCurrency, formatDate } from '../lib/format'
 import type { Settings as AppSettings } from '../types'
 
 export default function Settings() {
@@ -14,6 +17,39 @@ export default function Settings() {
 
   const txCount = useLiveQuery(() => db.transactions.count(), [])
   const catCount = useLiveQuery(() => db.categories.count(), [])
+
+  // Kontostand-Anker (Eingabe), einmalig aus den Einstellungen vorbelegen.
+  const [anchorAmount, setAnchorAmount] = useState('')
+  const [anchorDate, setAnchorDate] = useState('')
+  const [anchorInit, setAnchorInit] = useState(false)
+  if (settings && !anchorInit) {
+    setAnchorInit(true)
+    if (settings.balanceAnchor) {
+      setAnchorAmount(String(settings.balanceAnchor.amount).replace('.', ','))
+      setAnchorDate(settings.balanceAnchor.date)
+    } else {
+      setAnchorDate(todayIso())
+    }
+  }
+
+  async function saveAnchor() {
+    const amount = parseAmount(anchorAmount, ',')
+    if (isNaN(amount) || !anchorDate) {
+      setMessage('❌ Bitte Kontostand-Betrag und Datum angeben.')
+      return
+    }
+    await db.settings.update('app', {
+      balanceAnchor: { date: anchorDate, amount },
+    })
+    setMessage('✅ Kontostand gesetzt.')
+  }
+
+  async function clearAnchor() {
+    await db.settings.update('app', { balanceAnchor: undefined })
+    setAnchorAmount('')
+    setAnchorDate(todayIso())
+    setMessage('Kontostand-Anker entfernt.')
+  }
 
   async function setTheme(theme: AppSettings['theme']) {
     await db.settings.update('app', { theme })
@@ -73,6 +109,51 @@ export default function Settings() {
           >
             🌙 Dunkel
           </button>
+        </div>
+      </div>
+
+      <div className="card">
+        <h3 className="card-title">💶 Kontostand</h3>
+        <p className="hint" style={{ marginTop: 0 }}>
+          Setze deinen aktuellen Kontostand zu einem Datum. Daraus berechnet die
+          App den laufenden Kontostand (zählt alle Buchungen, auch Umbuchungen).
+          Beim DKB-Import wird der Wert automatisch übernommen.
+        </p>
+        {settings?.balanceAnchor && (
+          <p className="hint" style={{ marginTop: 0 }}>
+            Aktueller Anker: <strong>{formatCurrency(settings.balanceAnchor.amount)}</strong>{' '}
+            am {formatDate(settings.balanceAnchor.date)}
+          </p>
+        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <label className="field" style={{ margin: 0, flex: 1 }}>
+            <span className="field-label">Kontostand (€)</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="z. B. 3.844,85"
+              value={anchorAmount}
+              onChange={(e) => setAnchorAmount(e.target.value)}
+            />
+          </label>
+          <label className="field" style={{ margin: 0, flex: 1 }}>
+            <span className="field-label">Stand am</span>
+            <input
+              type="date"
+              value={anchorDate}
+              onChange={(e) => setAnchorDate(e.target.value)}
+            />
+          </label>
+        </div>
+        <div className="stack" style={{ marginTop: 12 }}>
+          <button className="btn btn-primary btn-block" onClick={saveAnchor}>
+            Kontostand speichern
+          </button>
+          {settings?.balanceAnchor && (
+            <button className="btn btn-block" onClick={clearAnchor}>
+              Anker entfernen
+            </button>
+          )}
         </div>
       </div>
 
